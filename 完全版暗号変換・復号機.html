@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>暗号化・復号化ツール</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      background: linear-gradient(to right, #dfe9f3, #ffffff);
+      color: #333;
+      max-width: 800px;
+      margin: auto;
+    }
+    textarea, input, button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 1em;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #history {
+      margin-top: 20px;
+      padding: 10px;
+      background: #ffffff;
+      border: 1px solid #ccc;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .history-entry {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .history-text {
+      flex-grow: 1;
+      overflow-wrap: anywhere;
+    }
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #d00;
+      font-size: 1em;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    .delete-btn:hover {
+      color: #a00;
+    }
+    .footer {
+      margin-top: 30px;
+      text-align: center;
+      font-size: 0.9em;
+    }
+    .footer a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    .top-buttons {
+      display: flex;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>暗号化・復号化ツール</h1>
+
+  <label for="inputText">テキストを入力:</label>
+  <textarea id="inputText" rows="4"></textarea>
+
+  <div class="top-buttons">
+    <button onclick="encrypt()">🔐 暗号化</button>
+    <button onclick="decrypt()">🔓 復号化</button>
+    <button onclick="clearFields()">🧹 クリア</button>
+    <button onclick="downloadOutput()">⬇️ 結果を保存</button>
+    <input type="file" id="uploadFile" accept=".txt" onchange="loadFromFile(event)">
+  </div>
+
+  <label><input type="checkbox" id="autoCopy"> 変換後のテキストを自動的に入力欄へコピー</label>
+
+  <label for="outputText">結果:</label>
+  <textarea id="outputText" rows="6" readonly></textarea>
+  <button onclick="copyToClipboard()">📋 コピー</button>
+
+  <h2>履歴</h2>
+  <button onclick="clearHistory()">🗑️ 履歴を全削除</button>
+  <input type="text" id="historySearch" placeholder="履歴を検索..." oninput="filterHistory()">
+  <div id="history"></div>
+
+  <div class="footer">
+    <p><a href="https://youtu.be/dQw4w9WgXcQ" target="_blank">ここをクリック</a></p>
+  </div>
+
+  <script>
+    const table = {
+      "あ": "1-1", "い": "1-2", "う": "1-3", "え": "1-4", "お": "1-5",
+      "か": "2-1", "が": "2=1", "き": "2-2", "ぎ": "2=2", "く": "2-3", "ぐ": "2=3", "け": "2-4", "げ": "2=4", "こ": "2-5", "ご": "2=5",
+      "さ": "3-1", "ざ": "3=1", "し": "3-2", "じ": "3=2", "す": "3-3", "ず": "3=3", "せ": "3-4", "ぜ": "3=4", "そ": "3-5", "ぞ": "3=5",
+      "た": "4-1", "だ": "4=1", "ち": "4-2", "ぢ": "4=2", "つ": "4-3", "づ": "4=3", "て": "4-4", "で": "4=4", "と": "4-5", "ど": "4=5",
+      "な": "5-1", "に": "5-2", "ぬ": "5-3", "ね": "5-4", "の": "5-5",
+      "は": "6-1", "ば": "6=1", "ぱ": "6^1", "ひ": "6-2", "び": "6=2", "ぴ": "6^2", "ふ": "6-3", "ぶ": "6=3", "ぷ": "6^3", "へ": "6-4", "べ": "6=4", "ぺ": "6^4", "ほ": "6-5", "ぼ": "6=5", "ぽ": "6^5",
+      "ま": "7-1", "み": "7-2", "む": "7-3", "め": "7-4", "も": "7-5",
+      "や": "8-1", "ゆ": "8-3", "よ": "8-5",
+      "ら": "9-1", "り": "9-2", "る": "9-3", "れ": "9-4", "ろ": "9-5",
+      "わ": "10-1", "を": "10-3", "ん": "10-5",
+      "ア": "1'-1", "イ": "1'-2", "ウ": "1'-3", "エ": "1'-4", "オ": "1'-5",
+      "カ": "2'-1", "ガ": "2'=1", "キ": "2'-2", "ギ": "2'=2", "ク": "2'-3", "グ": "2'=3", "ケ": "2'-4", "ゲ": "2'=4", "コ": "2'-5", "ゴ": "2'=5",
+      "サ": "3'-1", "ザ": "3'=1", "シ": "3'-2", "ジ": "3'=2", "ス": "3'-3", "ズ": "3'=3", "セ": "3'-4", "ゼ": "3'=4", "ソ": "3'-5", "ゾ": "3'=5",
+      "タ": "4'-1", "ダ": "4'=1", "チ": "4'-2", "ヂ": "4'=2", "ツ": "4'-3", "ヅ": "4'=3", "テ": "4'-4", "デ": "4'=4", "ト": "4'-5", "ド": "4'=5",
+      "ナ": "5'-1", "ニ": "5'-2", "ヌ": "5'-3", "ネ": "5'-4", "ノ": "5'-5",
+      "ハ": "6'-1", "バ": "6'=1", "パ": "6'^1", "ヒ": "6'-2", "ビ": "6'=2", "ピ": "6'^2", "フ": "6'-3", "ブ": "6'=3", "プ": "6'^3", "ヘ": "6'-4", "ベ": "6'=4", "ペ": "6'^4", "ホ": "6'-5", "ボ": "6'=5", "ポ": "6'^5",
+      "マ": "7'-1", "ミ": "7'-2", "ム": "7'-3", "メ": "7'-4", "モ": "7'-5",
+      "ヤ": "8'-1", "ユ": "8'-3", "ヨ": "8'-5",
+      "ラ": "9'-1", "リ": "9'-2", "ル": "9'-3", "レ": "9'-4", "ロ": "9'-5",
+      "ワ": "10'-1", "ヲ": "10'-3", "ン": "10'-5",
+      "ー": "12-1", "、": "12-2", "。": "12-3", "？": "12-4", "！": "12-5", "?": "12-6", "!": "12-7", "-": "12-8", "+": "12-9", "×": "12-10", "÷": "12-11", ",": "12-12", ".": "12-13", "/": "12-14", " ": "12-0", ")": "12-15", "(": "12-16", "]": "12-17", "[": "12-18", "」": "12-19", "「": "12-20", ":": "12-21", ";": "12-21", "=": "12-22",
+      "A": "13-1", "B": "13-2", "C": "13-3", "D": "13-4", "E": "13-5", "F": "13-6", "G": "13-7", "H": "13-8", "I": "13-9", "J": "13-10", "K": "13-11", "L": "13-12",
+      "M": "13-13", "N": "13-14", "O": "13-15", "P": "13-16", "Q": "13-17", "R": "13-18", "S": "13-19", "T": "13-20", "U": "13-21", "V": "13-22", "W": "13-23", "X": "13-24", "Y": "13-25", "Z": "13-26",
+      "a": "14-1", "b": "14-2", "c": "14-3", "d": "14-4", "e": "14-5", "f": "14-6", "g": "14-7", "h": "14-8", "i": "14-9", "j": "14-10", "k": "14-11", "l": "14-12",
+      "m": "14-13", "n": "14-14", "o": "14-15", "p": "14-16", "q": "14-17", "r": "14-18", "s": "14-19", "t": "14-20", "u": "14-21", "v": "14-22", "w": "14-23", "x": "14-24", "y": "14-25", "z": "14-26",
+      "0": "00;00", "1": "00;01", "2": "00;10", "3": "00;11", "4": "01;00", "5": "01;01", "6": "01;10", "7": "01;11", "8": "10;00", "9": "10;01"
+    };
+
+    function encrypt() {
+      const input = document.getElementById("inputText").value;
+      const chars = [...input];  // 修正された文字分割
+      const output = chars.map(ch => table[ch] || ch).join('  ');
+      document.getElementById("outputText").value = output;
+      if (document.getElementById("autoCopy").checked) {
+        document.getElementById("inputText").value = output;
+      }
+      addHistory(output);
+    }
+
+
+    function decrypt() {
+      const reversedTable = Object.fromEntries(Object.entries(table).map(([k, v]) => [v, k]));
+      const input = document.getElementById("inputText").value.trim();
+      const codes = input.split(/\s{2,}/);
+      const output = codes.map(code => reversedTable[code] || code).join('');
+      document.getElementById("outputText").value = output;
+      if (document.getElementById("autoCopy").checked) {
+        document.getElementById("inputText").value = output;
+      }
+      addHistory(output);
+    }
+
+    function clearFields() {
+      document.getElementById("inputText").value = '';
+      document.getElementById("outputText").value = '';
+    }
+
+    function copyToClipboard() {
+      const text = document.getElementById("outputText").value;
+      navigator.clipboard.writeText(text);
+    }
+
+    function addHistory(entry) {
+      const history = document.getElementById("history");
+      const container = document.createElement("div");
+      container.className = "history-entry";
+      const text = document.createElement("div");
+      text.className = "history-text";
+      text.textContent = entry;
+      const delBtn = document.createElement("button");
+      delBtn.className = "delete-btn";
+      delBtn.textContent = "❌";
+      delBtn.onclick = () => {
+        container.remove();
+        localStorage.setItem("history", history.innerHTML);
+      };
+      container.appendChild(text);
+      container.appendChild(delBtn);
+      history.prepend(container);
+      localStorage.setItem("history", history.innerHTML);
+    }
+
+    function clearHistory() {
+      document.getElementById("history").innerHTML = '';
+      localStorage.removeItem("history");
+    }
+
+    function filterHistory() {
+      const keyword = document.getElementById("historySearch").value.toLowerCase();
+      const entries = document.querySelectorAll(".history-entry");
+      entries.forEach(entry => {
+        entry.style.display = entry.textContent.toLowerCase().includes(keyword) ? "flex" : "none";
+      });
+    }
+
+    function downloadOutput() {
+      const content = document.getElementById("outputText").value;
+      const blob = new Blob([content], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "output.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function loadFromFile(event) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById("inputText").value = e.target.result;
+      };
+      reader.readAsText(file);
+    }
+
+    window.onload = () => {
+      const savedHistory = localStorage.getItem("history");
+      if (savedHistory) {
+        document.getElementById("history").innerHTML = savedHistory;
+        const deleteButtons = document.querySelectorAll(".delete-btn");
+        deleteButtons.forEach(btn => btn.onclick = () => {
+          btn.parentElement.remove();
+          localStorage.setItem("history", document.getElementById("history").innerHTML);
+        });
+      }
+    }
+  </script>
+</body>
+</html>
