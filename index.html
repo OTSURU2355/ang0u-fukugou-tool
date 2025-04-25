@@ -84,7 +84,7 @@
     
 　<h2>使い方</h2>
 　<h3>一番上の入力欄に暗号化したい文字OR復号化(暗号を原文に戻す)したい文字をいれる。<br>暗号化したい場合は「🔐 暗号化」、復号化したい場合には「🔓️ 復号化」を押す。<br>結果が出たら「📋 コピー」を押してネ</h3>
-  <h3>サイトの一番下にある「ここをクリック」をおすと...?</h3>
+  <h5>サイトの一番下にある「ここをクリック」をおすと...?</h5>
     
   <label for="inputText">テキストを入力:</label>
   <textarea id="inputText" rows="4"></textarea>
@@ -157,7 +157,7 @@
     function decrypt() {
       const reversedTable = Object.fromEntries(Object.entries(table).map(([k, v]) => [v, k]));
       const input = document.getElementById("inputText").value.trim();
-      const codes = input.split(/\s{1,}/);
+      const codes = input.split(/\s+/); // スペース1つ以上で分割
       const output = codes.map(code => reversedTable[code] || code).join('');
       document.getElementById("outputText").value = output;
       if (document.getElementById("autoCopy").checked) {
