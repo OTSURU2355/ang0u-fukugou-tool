@@ -157,7 +157,7 @@
     function decrypt() {
       const reversedTable = Object.fromEntries(Object.entries(table).map(([k, v]) => [v, k]));
       const input = document.getElementById("inputText").value.trim();
-      const codes = input.split(/\s{2,}/);
+      const codes = input.split(/\s{1,}/);
       const output = codes.map(code => reversedTable[code] || code).join('');
       document.getElementById("outputText").value = output;
       if (document.getElementById("autoCopy").checked) {
